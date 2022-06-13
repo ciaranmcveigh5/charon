@@ -200,7 +200,7 @@ func (d Definition) HashTreeRootWith(hh *ssz.Hasher) error {
 		subIndx := hh.Index()
 		num := uint64(len(d.Operators))
 		for _, operator := range d.Operators {
-			if err := operator.HashTreeRootWith(hh); err != nil {
+			if err := operator.OperatorAddress.HashTreeRootWith(hh); err != nil {
 				return err
 			}
 		}
@@ -212,11 +212,21 @@ func (d Definition) HashTreeRootWith(hh *ssz.Hasher) error {
 	return nil
 }
 
+func (d Definition) ConfigHash() ([32]byte, error) {
+	return [32]byte{}, nil
+}
+
 func (d Definition) MarshalJSON() ([]byte, error) {
-	// Marshal definition hash
-	hash, err := d.HashTreeRoot()
+	// Marshal config hash
+	configHash, err := d.ConfigHash()
 	if err != nil {
-		return nil, errors.Wrap(err, "hash lock")
+		return nil, errors.Wrap(err, "config hash")
+	}
+
+	// Marshal definition hash
+	defHash, err := d.HashTreeRoot()
+	if err != nil {
+		return nil, errors.Wrap(err, "definition hash")
 	}
 
 	// Marshal json version of lock
@@ -231,8 +241,8 @@ func (d Definition) MarshalJSON() ([]byte, error) {
 		DKGAlgorithm:        d.DKGAlgorithm,
 		ForkVersion:         d.ForkVersion,
 		Operators:           d.Operators,
-		OperatorSignatures:  d.OperatorSignatures,
-		DefinitionHash:      hash[:],
+		ConfigHash:          configHash[:],
+		DefinitionHash:      defHash[:],
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "marshal lock")
@@ -268,7 +278,6 @@ func (d *Definition) UnmarshalJSON(data []byte) error {
 		DKGAlgorithm:        defFmt.DKGAlgorithm,
 		ForkVersion:         defFmt.ForkVersion,
 		Operators:           defFmt.Operators,
-		OperatorSignatures:  defFmt.OperatorSignatures,
 	}
 
 	hash, err := def.HashTreeRoot()
@@ -331,6 +340,6 @@ type defFmt struct {
 	WithdrawalAddress   string     `json:"withdrawal_address,omitempty"`
 	DKGAlgorithm        string     `json:"dkg_algorithm"`
 	ForkVersion         string     `json:"fork_version"`
+	ConfigHash          []byte     `json:"config_hash"`
 	DefinitionHash      []byte     `json:"definition_hash"`
-	OperatorSignatures  [][]byte   `json:"operator_signatures"`
 }
